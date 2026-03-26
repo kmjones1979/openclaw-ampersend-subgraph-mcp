@@ -1,0 +1,9 @@
+# Secrets
+.env
+*.env
+
+# Bundles / large binaries
+*.tar.gz
+
+# Internal state
+.openclaw/
