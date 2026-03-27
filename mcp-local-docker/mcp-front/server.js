@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
+const path = require('path');
 const {
   x402ResourceServer,
   x402HTTPResourceServer,
@@ -248,6 +249,10 @@ async function x402Middleware(req, res, next) {
     return res.status(500).json({ error: 'Payment processing error', detail: err.message });
   }
 }
+
+// Favicon
+app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png')));
+app.get('/favicon.png', (req, res) => res.sendFile(path.join(__dirname, 'favicon.png')));
 
 // x402 discovery endpoint
 app.get('/.well-known/x402', (req, res) => {
