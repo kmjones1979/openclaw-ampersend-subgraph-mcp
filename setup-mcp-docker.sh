@@ -2,129 +2,173 @@
 set -euo pipefail
 
 ROOT_DIR="/root/.openclaw/workspace/mcp-local-docker"
+ENV_FILE="$ROOT_DIR/.env"
 
-echo "=== Ensure stack directory exists ==="
+echo "============================================"
+echo "  Subgraph MCP + x402 Payment Gateway Setup"
+echo "============================================"
+echo
+
+# --- Check stack directory ---
 if [ ! -d "$ROOT_DIR" ]; then
   echo "ERROR: Stack directory not found at $ROOT_DIR"
-  echo "Please place the prepared docker-compose.yml and related files there."
   exit 1
 fi
 
-echo "=== Install Docker (if needed) ==="
+# --- Install Docker if needed ---
 if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker not found. Installing via official script..."
+  echo "Installing Docker..."
   curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
   sudo sh /tmp/get-docker.sh
-  # Ensure user can run docker without sudo for convenience
-  if [ -n "${SUDO_USER:-}" ]; then
-    sudo usermod -aG docker "$SUDO_USER"
-    echo "Note: You may need to log out/in for docker group changes to take effect."
-  fi
+  [ -n "${SUDO_USER:-}" ] && sudo usermod -aG docker "$SUDO_USER"
 else
-  echo "Docker is installed."
+  echo "Docker: installed"
 fi
 
-echo "=== Install Docker Compose (if needed) ==="
-# Prefer Docker's plugin (docker compose) if available; otherwise install standalone
-if ! docker compose version >/dev/null 2>&1; then
-  if ! command -v docker-compose >/dev/null 2>&1; then
-    echo "Installing standalone docker-compose..."
-    DOCKER_COMPOSE_VERSION="2.20.0"
-    ARCH=$(uname -m)
-    URL="https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-${ARCH}"
-    sudo curl -L "$URL" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+# --- Install Docker Compose if needed ---
+if docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose: installed (plugin)"
+  DC="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+  echo "Docker Compose: installed (standalone)"
+  DC="docker-compose"
+else
+  echo "Installing docker-compose..."
+  ARCH=$(uname -m)
+  sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-${ARCH}" \
+    -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  DC="docker-compose"
+fi
+
+# --- Gather credentials ---
+echo
+echo "=== Configuration ==="
+echo
+
+if [ -f "$ENV_FILE" ]; then
+  echo "Existing .env found at $ENV_FILE"
+  echo "Do you want to (K)eep it or (R)econfigure? [K/R]"
+  read -r CHOICE
+  if [[ ! "$CHOICE" =~ ^[Rr]$ ]]; then
+    echo "Keeping existing .env"
+    set -o allexport; source "$ENV_FILE"; set +o allexport
   else
-    echo "Using existing docker-compose (standalone)."
+    RECONFIGURE=true
   fi
 else
-  echo "Using 'docker compose' (plugin)."
+  RECONFIGURE=true
 fi
 
-echo "=== Prepare environment variables (interactive) ==="
-ENV_VARS_FILE="$ROOT_DIR/.env"
-if [ ! -f "$ENV_VARS_FILE" ]; then
-  cat > "$ENV_VARS_FILE" <<EOF
-GATEWAY_API_KEY=REPLACE_WITH_YOUR_GATEWAY_API_KEY
-AMPERSEND_API_KEY=REPLACE_WITH_YOUR_AMPERSEND_API_KEY
-AMPERSEND_API_URL=https://api.ampersend.ai
-EOF
-  echo "Created $ENV_VARS_FILE with placeholders. Edit and fill real keys as needed."
-fi
+if [ "${RECONFIGURE:-false}" = "true" ]; then
+  echo
+  echo "--- Required ---"
+  echo
+  read -rp "The Graph Gateway API Key: " GATEWAY_API_KEY
+  read -rp "Pay-to wallet address (Base mainnet): " PAY_TO_ADDRESS
+  echo
+  echo "--- Coinbase CDP (for x402 payment facilitation) ---"
+  echo "Create an app at https://portal.cdp.coinbase.com"
+  echo "Generate an Ed25519 API key pair"
+  echo
+  read -rp "CDP App ID: " CDP_APP_ID
+  read -rp "CDP Secret (base64 Ed25519 key): " CDP_SECRET
+  echo
+  echo "--- Optional (press Enter for defaults) ---"
+  echo
+  read -rp "x402 Network [eip155:8453]: " X402_NETWORK
+  X402_NETWORK="${X402_NETWORK:-eip155:8453}"
+  read -rp "Price per call in USD [0.01]: " PRICE_PER_CALL
+  PRICE_PER_CALL="${PRICE_PER_CALL:-0.01}"
 
-echo "Would you like to (A) fill keys now interactively, or (B) keep placeholders and edit later? [A/B]"
-read -r CHOICE
-if [[ "$CHOICE" =~ ^[Aa]$ ]]; then
-  echo "Enter MCP Gateway API Key (for MCP):"
-  read -r GATEWAY_API_KEY
-  echo "Enter Ampersend API Key (for Ampersend):"
-  read -r AMPERSEND_API_KEY
-  echo "Enter Ampersend API URL (default: https://api.ampersend.ai):"
-  read -r AMPERSEND_API_URL
-  AMPERSEND_API_URL="${AMPERSEND_API_URL:-https://api.ampersend.ai}"
-  cat > "$ENV_VARS_FILE" <<EOF
+  cat > "$ENV_FILE" <<EOF
 GATEWAY_API_KEY=${GATEWAY_API_KEY}
-AMPERSEND_API_KEY=${AMPERSEND_API_KEY}
-AMPERSEND_API_URL=${AMPERSEND_API_URL}
+PAY_TO_ADDRESS=${PAY_TO_ADDRESS}
+CDP_APP_ID=${CDP_APP_ID}
+CDP_SECRET=${CDP_SECRET}
+X402_NETWORK=${X402_NETWORK}
+FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
+PRICE_PER_CALL=${PRICE_PER_CALL}
 EOF
-  echo "Saved keys to $ENV_VARS_FILE"
-else
-  echo "Using placeholders in $ENV_VARS_FILE. Edit them later as needed."
+  echo
+  echo "Saved configuration to $ENV_FILE"
+
+  set -o allexport; source "$ENV_FILE"; set +o allexport
 fi
-set -o allexport
-source "$ENV_VARS_FILE"
-set +o allexport
 
-echo "=== Start stack (docker-compose) ==="
+# --- Build and start ---
+echo
+echo "=== Starting stack ==="
 cd "$ROOT_DIR"
-docker-compose up -d
+$DC up -d --build
 
-echo "=== Wait for MCP GraphQL endpoint to be ready ==="
-function wait_for_http {
-  local url="$1"
-  local retries="$2"
-  local i=0
-  while [ $i -lt "$retries" ]; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
-      echo "✔ Ready: $url"
-      return 0
-    fi
-    i=$((i+1))
-    sleep 2
-  done
-  echo "✖ Timed out waiting for $url" >&2
-  return 1
-}
-wait_for_http "http://localhost:8000/graphql" 60
+# --- Wait for MCP backend ---
+echo
+echo "=== Waiting for MCP server ==="
+for i in $(seq 1 30); do
+  if curl -fsS "http://localhost:8000/graphql" >/dev/null 2>&1; then
+    echo "MCP server ready (port 8000)"
+    break
+  fi
+  [ "$i" -eq 30 ] && echo "WARNING: MCP server not responding after 60s" && break
+  sleep 2
+done
 
-echo "=== Test MCP schema (GraphQL) ==="
-RESP_MCP=$(curl -sS -X POST http://localhost:8000/graphql \
+# --- Wait for x402 proxy ---
+for i in $(seq 1 15); do
+  if curl -fsS "http://localhost:8080/sse" >/dev/null 2>&1; then
+    echo "x402 proxy ready (port 8080)"
+    break
+  fi
+  sleep 2
+done
+
+# --- Test ---
+echo
+echo "=== Testing endpoints ==="
+echo
+
+echo "1. SSE session (free):"
+SESSION_ID=$(timeout 3 curl -sN http://localhost:8080/sse 2>/dev/null | grep -oP 'sessionId=\K[a-f0-9-]+' || echo "")
+if [ -n "$SESSION_ID" ]; then
+  echo "   Session ID: $SESSION_ID"
+else
+  echo "   WARNING: Could not get SSE session"
+fi
+
+echo
+echo "2. Paid endpoint without payment (expect 402):"
+RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:8080/messages?sessionId=test" \
   -H "Content-Type: application/json" \
-  -d '{"query":"{ __schema { types { name } } }" }')
-echo "MCP /graphql response:"
-echo "$RESP_MCP"
-echo
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}')
+if [ "$RESP" = "402" ]; then
+  echo "   HTTP $RESP - x402 payment gating is working"
+else
+  echo "   HTTP $RESP - unexpected (expected 402)"
+fi
 
-echo "=== Test Ampersend-front with token (paid) ==="
-PAYLOAD_TOKEN='{"query":"{ __schema { types { name } } }", "ampersend": {"token":"test-token","amount":1000000}}'
-RESP_APP_TOKEN=$(curl -sS -X POST http://localhost:8080/query \
+echo
+echo "3. Payment requirements:"
+curl -s -X POST "http://localhost:8080/messages?sessionId=test" \
   -H "Content-Type: application/json" \
-  -d "$PAYLOAD_TOKEN")
-echo "APP /query with token response:"
-echo "$RESP_APP_TOKEN"
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' 2>/dev/null | head -c 500
+echo
 echo
 
-echo "=== Test Ampersend-front without token (expected 402 or placeholder) ==="
-RESP_APP_NO_TOKEN=$(curl -sS -X POST http://localhost:8080/query \
-  -H "Content-Type: application/json" \
-  -d '{"query":"{ __schema { types { name } } }"}')
-echo "APP /query without token response:"
-echo "$RESP_APP_NO_TOKEN"
-echo
+echo "=== Logs ==="
+$DC logs --tail 10 mcp 2>/dev/null | grep -v "level=warning"
+$DC logs --tail 10 app 2>/dev/null | grep -v "level=warning"
 
-echo "=== Logs (last 80 lines) ==="
-docker-compose logs mcp | tail -n 80
-docker-compose logs app | tail -n 80
 echo
-
-echo "Done. To tear down: docker-compose down"
+echo "============================================"
+echo "  Setup complete!"
+echo
+echo "  Endpoints:"
+echo "    SSE (free):  http://$(hostname -I | awk '{print $1}'):8080/sse"
+echo "    MCP (paid):  http://$(hostname -I | awk '{print $1}'):8080/messages"
+echo
+echo "  Payment: \$${PRICE_PER_CALL:-0.01} USDC per call on ${X402_NETWORK:-eip155:8453}"
+echo "  Pay-to:  ${PAY_TO_ADDRESS:-<not set>}"
+echo
+echo "  Teardown: cd $ROOT_DIR && $DC down"
+echo "============================================"

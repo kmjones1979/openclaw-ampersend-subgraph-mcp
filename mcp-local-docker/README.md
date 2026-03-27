@@ -1,57 +1,159 @@
-# Local MCP + Ampersend-front (OpenClaw) — Quick Start
+# Subgraph MCP + x402 Payment Gateway
 
-This bundle provides a self-contained, locally runnable stack for The Graph MCP (Subgraph MCP) with an Ampersend-enabled Node.js app fronting it. It’s designed for quick testing, experimentation, and local development.
+A self-contained stack that serves [The Graph](https://thegraph.com/) subgraph data via the [Model Context Protocol (MCP)](https://github.com/graphops/subgraph-mcp), gated by [x402](https://www.x402.org/) micropayments in USDC on Base mainnet.
 
-What’s included
-- Local Subgraph MCP server (Rust) to host GraphQL MCP endpoints
-- Ampersend-enabled Node.js front-end that gates queries with x402 payments
-- A minimal test UI (optional) and test scripts for end-to-end verification
-- Convenience scripts:
-  - setup-mcp-docker.sh (interactive bootstrap)
-  - setup-mcp-docker-noninteractive.sh (non-interactive bootstrap)
-  - test-stack.sh (end-to-end tests for MCP + Ampersend-front)
-- A ready-to-download bundle (tarball) that you can move to another Linux host
+## Architecture
 
-Prerequisites
-- Docker and Docker Compose installed on the host
-- The host can reach The Graph Gateway (for real deployments via MCP)
-- Optional: Ampersend API key for paid flows
+```
+Client (with USDC wallet)
+  │
+  │  x402 payment (PAYMENT-SIGNATURE header)
+  ▼
+┌──────────────────────────────┐
+│  Node.js x402 Proxy (:8080)  │  ← verifies + settles payments via Coinbase CDP
+│  Express + @x402/core        │
+└──────────┬───────────────────┘
+           │  proxy (free after payment)
+           ▼
+┌──────────────────────────────┐
+│  Subgraph MCP Server (:8000) │  ← Rust, queries The Graph Gateway
+│  GraphQL + MCP protocol      │
+└──────────────────────────────┘
+```
 
-Quick start options
-- Option A — Interactive bootstrap (recommended for testing)
-  1. Ensure you have keys (MCP gateway, Ampersend) prepared
-  2. Run: sudo bash setup-mcp-docker.sh
-  3. When prompted, enter the keys or edit the .env afterward at /root/.openclaw/workspace/mcp-local-docker/.env
-  4. After startup, test endpoints:
-     - MCP: curl -sS -X POST http://localhost:8000/graphql -H 'Content-Type: application/json' -d '{"query":"{ __schema { types { name } } }"}'
-     - Ampersend-front with token: curl -sS -X POST http://localhost:8080/query -H 'Content-Type: application/json' -d '{"query":"{ __schema { types { name } } }", "ampersend": {"token":"test-token","amount":1000000}}'
-     - Ampersend-front without token: curl -sS -X POST http://localhost:8080/query -H 'Content-Type: application/json' -d '{"query":"{ __schema { types { name } } }"}'
-- Option B — Non-interactive bootstrap (no prompts)
-  1. Pre-fill /root/.openclaw/workspace/mcp-local-docker/.env with real keys or export GATEWAY_API_KEY, AMPERSEND_API_KEY, AMPERSEND_API_URL
-  2. Run: bash setup-mcp-docker-noninteractive.sh
-  3. Then run test-stack.sh to verify end-to-end
-- Option C — Full one-shot quick test (no prompts, all in one go)
-  1. Use the one-shot script: setup-mcp-docker-oneshot.sh
-  2. Run: sudo GATEWAY_API_KEY=... AMPERSEND_API_KEY=... AMPERSEND_API_URL=... bash setup-mcp-docker-oneshot.sh
+## What you need
 
-Post-setup testing
-- Test MCP GraphQL schema as above
-- Test the Ampersend front-end with a paid token and without a token to verify behavior
-- Check last logs:
-  - docker-compose logs mcp | tail -n 80
-  - docker-compose logs app | tail -n 80
+| Item | Where to get it |
+|---|---|
+| **The Graph Gateway API key** | [thegraph.com/studio](https://thegraph.com/studio) |
+| **Coinbase CDP App ID + Ed25519 secret** | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — create an app, generate an Ed25519 key pair |
+| **A wallet address on Base mainnet** | Where USDC payments are sent |
+| **Docker + Docker Compose** | Setup script installs these if missing |
 
-Tearing down
-- docker-compose down (from within the mcp-local-docker directory)
+## Quick start
 
-Keeping this bundle up-to-date
-- If you update or modify files, re-pack the bundle to share or move it easily on another machine
+```bash
+# Clone the repo
+git clone https://github.com/kmjones1979/openclaw-ampersend-subgraph-mcp.git
+cd openclaw-ampersend-subgraph-mcp
 
-Downloadable tarball
-- A ready-to-use bundle tarball is available as a new file at the repository bundle location (mcp-local-docker-bundle-v2.tar.gz), containing the same structure plus this README.md. Use: tar -xzvf mcp-local-docker-bundle-v2.tar.gz
+# Run interactive setup (prompts for keys)
+sudo bash setup-mcp-docker.sh
+```
 
-Tips
-- For production, replace the placeholders with real keys and consider securing keys using proper secret management.
-- If you want a README in a specific format (Markdown vs plain text) or want additional sections (e.g., architecture diagram, troubleshooting), tell me and I’ll adjust.
+The setup script will:
+1. Install Docker/Compose if needed
+2. Prompt for your Gateway key, CDP credentials, and pay-to address
+3. Build and start both containers
+4. Test the endpoints
 
-Happy testing!
+### Manual setup (non-interactive)
+
+```bash
+# 1. Copy and fill the env template
+cp mcp-local-docker/.env.example mcp-local-docker/.env
+# Edit .env with your values
+
+# 2. Start the stack
+cd mcp-local-docker
+docker compose up -d --build
+
+# 3. Verify
+curl -s -N http://localhost:8080/sse          # Should return SSE with sessionId
+curl -s -X POST http://localhost:8080/messages \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+# Should return HTTP 402 with payment requirements
+```
+
+## Endpoints
+
+| Method | Path | Payment | Description |
+|---|---|---|---|
+| `GET` | `/sse` | Free | SSE session — returns `sessionId` |
+| `POST` | `/messages?sessionId=<id>` | $0.01 USDC | MCP tool calls |
+| `POST` | `/query?sessionId=<id>` | $0.01 USDC | Legacy MCP endpoint |
+
+## x402 payment details
+
+| | |
+|---|---|
+| **x402 Version** | 2 |
+| **Scheme** | `exact` (EIP-3009) |
+| **Network** | `eip155:8453` (Base mainnet) |
+| **Asset** | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` (USDC) |
+| **Facilitator** | Coinbase CDP (`https://api.cdp.coinbase.com/platform/v2/x402`) |
+
+### Payment flow
+
+1. `GET /sse` → receive `sessionId`
+2. `POST /messages?sessionId=<id>` → HTTP 402 with `PAYMENT-REQUIRED` header (base64 JSON with `accepts` array)
+3. Client signs EIP-3009 `transferWithAuthorization` using the requirements
+4. Retry with `PAYMENT-SIGNATURE` header (base64 payment payload)
+5. Server verifies + settles via CDP, returns `PAYMENT-RESPONSE` header
+
+### Client example
+
+```bash
+npm install @x402/fetch viem
+```
+
+```js
+import { wrapFetchWithPayment } from "@x402/fetch";
+import { createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { base } from "viem/chains";
+
+const wallet = createWalletClient({
+  account: privateKeyToAccount("0xYOUR_KEY"),
+  chain: base,
+  transport: http(),
+});
+
+const paidFetch = wrapFetchWithPayment(fetch, wallet);
+
+// Automatically handles 402 → sign → retry
+const res = await paidFetch("http://<SERVER>:8080/messages?sessionId=<ID>", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    jsonrpc: "2.0", id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "my-client", version: "1.0" },
+    },
+  }),
+});
+```
+
+## Environment variables
+
+See [`.env.example`](.env.example) for the full list with descriptions.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GATEWAY_API_KEY` | Yes | — | The Graph Gateway API key |
+| `PAY_TO_ADDRESS` | Yes | — | Wallet address to receive USDC payments |
+| `CDP_APP_ID` | Yes | — | Coinbase CDP application ID |
+| `CDP_SECRET` | Yes | — | Base64-encoded Ed25519 private key from CDP |
+| `X402_NETWORK` | No | `eip155:8453` | Chain in CAIP-2 format |
+| `FACILITATOR_URL` | No | `https://api.cdp.coinbase.com/platform/v2/x402` | x402 facilitator endpoint |
+| `PRICE_PER_CALL` | No | `0.01` | USD price per MCP call |
+
+## Teardown
+
+```bash
+cd mcp-local-docker
+docker compose down
+```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `x402 init failed` on startup | Check CDP_APP_ID and CDP_SECRET are correct. The server queries `/supported` on the facilitator at boot. |
+| 402 with `extra: {}` | USDC EIP-712 domain info missing. Make sure you're on the latest `server.js`. |
+| Settlement fails after verify succeeds | Check `settleResult.success` (not `settleResult.type`). Fixed in commit `19a4c10`. |
+| `invalid_payload` from facilitator | Network must be CAIP-2 format (`eip155:8453`), not named (`base`). |

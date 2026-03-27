@@ -10,42 +10,59 @@ if [ ! -d "$ROOT_DIR" ]; then
 fi
 
 if [ ! -f "$ENV_FILE" ]; then
-  cat > "$ENV_FILE" <<EOF
-GATEWAY_API_KEY=
-AMPERSEND_API_KEY=
-AMPERSEND_API_URL=https://api.ampersend.ai
-EOF
-  echo "Created $ENV_FILE with placeholders. Edit them before running."
+  echo "ERROR: No .env file found at $ENV_FILE"
+  echo "Copy .env.example and fill in your credentials:"
+  echo "  cp $ROOT_DIR/.env.example $ENV_FILE"
+  exit 1
 fi
+
 set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
+# Validate required vars
+for VAR in GATEWAY_API_KEY PAY_TO_ADDRESS CDP_APP_ID CDP_SECRET; do
+  if [ -z "${!VAR:-}" ]; then
+    echo "ERROR: $VAR is not set in $ENV_FILE"
+    exit 1
+  fi
+done
+
 cd "$ROOT_DIR"
-docker-compose up -d
 
-wait_for_http() {
-  local url="$1"; local retries="$2"; local i=0
-  while [ $i -lt "$retries" ]; do
-    if curl -fsS "$url" >/dev/null 2>&1; then echo "✔ Ready: $url"; return 0; fi; i=$((i+1)); sleep 2; done
-  echo "✖ Timed out waiting for $url"; return 1
-}
-wait_for_http http://localhost:8000/graphql 60
+echo "=== Building and starting stack ==="
+docker compose up -d --build
 
-RESP_MCP=$(curl -sS -X POST http://localhost:8000/graphql -H "Content-Type: application/json" -d '{"query":"{ __schema { types { name } } }"}')
-echo "MCP response:"
-echo "$RESP_MCP"
+echo "=== Waiting for services ==="
+for i in $(seq 1 30); do
+  curl -fsS "http://localhost:8000/graphql" >/dev/null 2>&1 && echo "MCP server ready" && break
+  [ "$i" -eq 30 ] && echo "WARNING: MCP server not responding" && break
+  sleep 2
+done
 
-PAYLOAD_TOKEN='{"query":"{ __schema { types { name } } }", "ampersend": {"token":"test-token","amount":1000000}}'
-RESP_APP_TOKEN=$(curl -sS -X POST http://localhost:8080/query -H "Content-Type: application/json" -d "$PAYLOAD_TOKEN")
-echo "APP /query with token response:"
-echo "$RESP_APP_TOKEN"
+for i in $(seq 1 15); do
+  curl -fsS "http://localhost:8080/sse" >/dev/null 2>&1 && echo "x402 proxy ready" && break
+  sleep 2
+done
 
-RESP_APP_NO_TOKEN=$(curl -sS -X POST http://localhost:8080/query -H "Content-Type: application/json" -d '{"query":"{ __schema { types { name } } }"}')
-echo "APP /query without token response:"
-echo "$RESP_APP_NO_TOKEN"
+echo "=== Testing ==="
 
-LOGS_MCP=$(docker-compose logs mcp | tail -n 80)
-LOGS_APP=$(docker-compose logs app | tail -n 80)
-echo "$LOGS_MCP\n$LOGS_APP"
+echo "SSE session:"
+timeout 3 curl -sN http://localhost:8080/sse 2>/dev/null | head -2 || echo "(timeout - ok for SSE)"
 
+echo
+echo "Paid endpoint (no payment, expect 402):"
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:8080/messages?sessionId=test" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}')
+echo "HTTP $HTTP_CODE"
+
+echo
+echo "=== Logs ==="
+docker compose logs --tail 10 2>/dev/null | grep -v "level=warning"
+
+echo
+echo "Done. Endpoints:"
+echo "  SSE:  http://localhost:8080/sse"
+echo "  MCP:  http://localhost:8080/messages"
+echo "  Teardown: cd $ROOT_DIR && docker compose down"

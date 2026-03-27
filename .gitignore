@@ -1,9 +1,14 @@
 # Secrets
 .env
 *.env
+!.env.example
 
 # Bundles / large binaries
 *.tar.gz
+
+# Dependencies
+node_modules/
+package-lock.json
 
 # Internal state
 .openclaw/
