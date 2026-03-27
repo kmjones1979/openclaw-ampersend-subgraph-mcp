@@ -23,4 +23,10 @@ services:
     environment:
       - MCP_HOST=http://mcp:8000
       - GATEWAY_API_KEY=${GATEWAY_API_KEY}
+      - PAY_TO_ADDRESS=${PAY_TO_ADDRESS}
+      - FACILITATOR_URL=${FACILITATOR_URL:-https://pay.openfacilitator.io}
+      - PRICE_PER_CALL=${PRICE_PER_CALL:-0.01}
+      - X402_NETWORK=${X402_NETWORK:-eip155:8453}
+      - CDP_APP_ID=${CDP_APP_ID:-}
+      - CDP_SECRET=${CDP_SECRET:-}
     restart: unless-stopped
