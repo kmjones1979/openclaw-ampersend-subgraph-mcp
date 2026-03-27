@@ -1,0 +1,27 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kmjones1979/openclaw-ampersend-subgraph-mcp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kmjones1979/openclaw-ampersend-subgraph-mcp/issues"
+  },
+  "homepage": "https://github.com/kmjones1979/openclaw-ampersend-subgraph-mcp#readme",
+  "dependencies": {
+    "@ampersend_ai/ampersend-sdk": "^0.0.13",
+    "@x402/core": "^2.8.0",
+    "@x402/fetch": "^2.8.0",
+    "viem": "^2.47.6",
+    "x402": "^1.1.0"
+  }
+}
