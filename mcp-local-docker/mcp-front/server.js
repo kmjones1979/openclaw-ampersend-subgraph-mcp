@@ -249,6 +249,77 @@ async function x402Middleware(req, res, next) {
   }
 }
 
+// x402 discovery endpoint
+app.get('/.well-known/x402', (req, res) => {
+  res.json({
+    version: 1,
+    resources: ['POST /messages', 'POST /query'],
+  });
+});
+
+// OpenAPI spec for x402scan discovery
+app.get('/openapi.json', (req, res) => {
+  res.json({
+    openapi: '3.0.3',
+    info: {
+      title: 'Subgraph MCP x402 API',
+      version: '1.0.0',
+      description: 'x402-paid access to The Graph subgraph data via MCP (Model Context Protocol). Query blockchain data from Uniswap, Aave, ENS, and 440+ subgraphs.',
+      'x-guidance': 'Connect via GET /sse to get a sessionId, then POST JSON-RPC messages to /messages?sessionId=<id>. Each POST costs $0.01 USDC on Base mainnet. Responses arrive on the SSE stream, not in the POST body.',
+    },
+    servers: [{ url: 'https://subgraph.duckdns.org' }],
+    paths: {
+      '/sse': {
+        get: {
+          summary: 'Open MCP SSE session (free)',
+          description: 'Opens a Server-Sent Events stream and returns a sessionId for subsequent message calls.',
+          responses: {
+            '200': { description: 'SSE stream with endpoint event containing sessionId' },
+          },
+        },
+      },
+      '/messages': {
+        post: {
+          summary: 'Send MCP JSON-RPC message ($0.01 USDC)',
+          description: 'Send a JSON-RPC 2.0 message (initialize, tools/list, tools/call) to the MCP server. Requires x402 payment. Response arrives on the SSE stream.',
+          'x-payment-info': {
+            protocols: ['x402'],
+            pricingMode: 'fixed',
+            price: '0.01',
+            network: 'eip155:8453',
+            asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            payTo: PAY_TO,
+          },
+          parameters: [
+            { name: 'sessionId', in: 'query', required: true, schema: { type: 'string' }, description: 'Session ID from SSE endpoint' },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['jsonrpc', 'id', 'method'],
+                  properties: {
+                    jsonrpc: { type: 'string', enum: ['2.0'] },
+                    id: { type: 'integer' },
+                    method: { type: 'string', enum: ['initialize', 'tools/list', 'tools/call'] },
+                    params: { type: 'object' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '202': { description: 'Message accepted. Response delivered via SSE stream.' },
+            '402': { description: 'Payment Required' },
+          },
+        },
+      },
+    },
+  });
+});
+
 // SSE endpoint (free - needed for session establishment)
 app.get('/sse', async (req, res) => {
   try {
