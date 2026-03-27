@@ -209,16 +209,18 @@ async function x402Middleware(req, res, next) {
         result.paymentRequirements,
         result.declaredExtensions,
       );
-      if (settleResult.type === 'settled') {
-        if (settleResult.response?.headers) {
-          for (const [key, value] of Object.entries(settleResult.response.headers)) {
+      if (settleResult.success) {
+        // Set PAYMENT-RESPONSE header
+        if (settleResult.headers) {
+          for (const [key, value] of Object.entries(settleResult.headers)) {
             res.set(key, value);
           }
         }
         return next();
       }
       // Settlement failed
-      const failResp = settleResult.response || { status: 402, headers: {}, body: { error: 'Settlement failed' } };
+      console.error('Settlement failed:', settleResult.errorReason, settleResult.errorMessage || '');
+      const failResp = settleResult.response || { status: 402, headers: {}, body: { error: settleResult.errorReason || 'Settlement failed' } };
       if (failResp.headers) {
         for (const [key, value] of Object.entries(failResp.headers)) {
           res.set(key, value);
