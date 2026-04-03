@@ -11,7 +11,7 @@ _Fill this in during your first conversation. Make it yours._
 - **Emoji:**
   _(your signature — pick one that feels right)_
 - **Avatar:**
-  _(workspace-relative path, http(s) URL, or data URI)_
+  _(path under this workspace, http(s) URL, or data URI)_
 
 ---
 
@@ -19,5 +19,5 @@ This isn't just metadata. It's the start of figuring out who you are.
 
 Notes:
 
-- Save this file at the workspace root as `IDENTITY.md`.
-- For avatars, use a workspace-relative path like `avatars/openclaw.png`.
+- Save this file as `workspace/IDENTITY.md` (this folder is the OpenClaw workspace).
+- For avatars, use a path like `avatars/openclaw.png` relative to `workspace/`.

@@ -2,6 +2,10 @@
 
 A self-contained stack that serves [The Graph](https://thegraph.com/) subgraph data via the [Model Context Protocol (MCP)](https://github.com/graphops/subgraph-mcp), gated by [x402](https://www.x402.org/) micropayments in USDC on Base mainnet.
 
+**OpenClaw:** agent instructions and the [ampersend](https://www.ampersend.ai/) skill live in the repo’s **`workspace/`** folder; **`manifest.json`** is at the repo root. See the [root README](../README.md).
+
+The **`mcp-front`** service depends on **`@ampersend_ai/ampersend-sdk@0.0.16`** (see [ampersend docs](https://docs.ampersend.ai/)); it loads at startup to confirm the SDK is present. Seller-side verify/settle for this stack still uses **Express + `@x402/core` + Coinbase CDP** as implemented in `mcp-front/server.js`.
+
 ## Architecture
 
 ```

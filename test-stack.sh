@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/root/.openclaw/workspace/mcp-local-docker"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${SCRIPT_DIR}/mcp-local-docker"
 cd "$ROOT_DIR"
 
 # Ensure env exists
@@ -23,8 +24,8 @@ docker-compose up -d
 wait_for_http() {
   local url="$1"; local retries="$2"; local i=0
   while [ $i -lt "$retries" ]; do
-    if curl -fsS "$url" >/dev/null 2>&1; then echo "✔ Ready: $url"; return 0; fi; i=$((i+1)); sleep 2; done
-  echo "✖ Timed out waiting for $url"; return 1
+    if curl -fsS "$url" >/dev/null 2>&1; then echo "Ready: $url"; return 0; fi; i=$((i+1)); sleep 2; done
+  echo "Timed out waiting for $url"; return 1
 }
 
 wait_for_http http://localhost:8000/graphql 60
@@ -54,5 +55,3 @@ docker-compose logs app | tail -n 80
 echo
 
 echo "Done. To tear down: docker-compose down"
-
-"}``` to=functions.exec psuz മേഖല to=functions.exec ertificate 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0? (I accidentally pasted a huge block; need to correct.)

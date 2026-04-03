@@ -1,3 +1,7 @@
+/**
+ * x402 seller proxy: Express + @x402/core + Coinbase CDP verify/settle, forwards to the Rust MCP backend.
+ * @ampersend_ai/ampersend-sdk is installed and verified at startup (ESM); see https://docs.ampersend.ai/
+ */
 const express = require('express');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
@@ -382,11 +386,39 @@ app.post('/query', x402Middleware, async (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 
+/** Ensure @ampersend_ai/ampersend-sdk resolves and core factories exist (SDK is ESM-only). */
+async function verifyAmpersendSdk() {
+  const sdk = await import('@ampersend_ai/ampersend-sdk');
+  const required = [
+    'createAmpersendHttpClient',
+    'createAmpersendTreasurer',
+    'createAmpersendProxy',
+    'createAmpersendMcpClient',
+  ];
+  const missing = required.filter((name) => typeof sdk[name] !== 'function');
+  if (missing.length) {
+    console.warn('@ampersend_ai/ampersend-sdk: unexpected exports (missing):', missing.join(', '));
+  } else {
+    console.log('@ampersend_ai/ampersend-sdk: OK (x402/MCP factories available)');
+  }
+}
+
+function startListening(paymentGatingLabel) {
+  app.listen(PORT, () => {
+    console.log(`x402 proxy listening on http://0.0.0.0:${PORT}${paymentGatingLabel}`);
+  });
+}
+
 initX402()
-  .then(() => {
-    app.listen(PORT, () => console.log(`x402 proxy listening on http://0.0.0.0:${PORT}`));
-  })
+  .then(() =>
+    verifyAmpersendSdk().catch((e) =>
+      console.warn('@ampersend_ai/ampersend-sdk:', e.message),
+    ),
+  )
+  .then(() => startListening(''))
   .catch((err) => {
     console.error('x402 init failed, starting without payment gating:', err.message);
-    app.listen(PORT, () => console.log(`Proxy listening on http://0.0.0.0:${PORT} (NO payment gating)`));
+    verifyAmpersendSdk()
+      .catch((e) => console.warn('@ampersend_ai/ampersend-sdk:', e.message))
+      .finally(() => startListening(' (NO payment gating)'));
   });

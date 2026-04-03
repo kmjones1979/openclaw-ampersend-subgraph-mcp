@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "agent": {
+    "name": "subgraph MCP × ampersend",
+    "description": "OpenClaw workspace for x402: The Graph subgraph data via MCP (self-hosted stack in this repo) plus ampersend CLI for agent-governed HTTP within human-set spend limits. Inspect before pay; keep dashboard login on the human's device.",
+    "vibe": "competent on-chain data + careful with funds",
+    "emoji": "💸"
+  },
+  "template": {
+    "slug": "openclaw-ampersend-subgraph-mcp",
+    "category": "defi",
+    "tags": [
+      "x402",
+      "openclaw",
+      "ampersend",
+      "the-graph",
+      "subgraph",
+      "mcp",
+      "base",
+      "stablecoin"
+    ],
+    "partnerName": "OpenClaw",
+    "partnerUrl": "https://docs.openclaw.ai"
+  },
+  "_docs": {
+    "_about": "Remove this entire _docs object before marketplace submission (Pinata template convention).",
+    "version": "Required. Always 1.",
+    "agent.name": "Display name (max 100 chars).",
+    "agent.description": "Purpose / personality (max 10,000 chars).",
+    "agent.vibe": "Short tagline (max 200 chars).",
+    "agent.emoji": "Icon (max 32 chars).",
+    "template.slug": "URL slug: lowercase, hyphens.",
+    "template.category": "e.g. general, defi, content, social, devops.",
+    "template.tags": "Max 10 discovery tags.",
+    "template.partnerName": "Partner or author name.",
+    "template.partnerUrl": "Optional author URL.",
+    "template.partnerLogoUrl": "Optional logo URL.",
+    "model.primary": "Optional default model; omit to let users pick in UI.",
+    "secrets": "Encrypted env vars at runtime; never put values in git.",
+    "skills": "ClawHub skills by IPFS cid; max 20.",
+    "tasks": "Cron prompts; max 20.",
+    "scripts.build": "Runs after git push — here: install ampersend CLI globally.",
+    "scripts.start": "Runs on boot — omit if no long-running process.",
+    "routes": "Port forwards; pair with scripts.start; bind servers to 0.0.0.0.",
+    "channels": "Telegram / Discord / Slack when you add them."
+  },
+  "secrets": [],
+  "scripts": {
+    "build": "npm install -g @ampersend_ai/ampersend-sdk@0.0.16"
+  },
+  "tasks": [
+    {
+      "name": "ampersend-daily-status",
+      "prompt": "Run `ampersend config status` and reply with one line: READY if the agent account is configured, or NOT CONFIGURED with the JSON error hint. Do not paste secrets.",
+      "schedule": "0 9 * * *",
+      "enabled": false
+    }
+  ]
+}

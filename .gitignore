@@ -1,7 +1,9 @@
-# Secrets
+.DS_Store
 .env
-*.env
-!.env.example
+.env.*
+**/*.key
+**/*.pem
+**/secrets*
 
 # Bundles / large binaries
 *.tar.gz
@@ -12,3 +14,6 @@ package-lock.json
 
 # Internal state
 .openclaw/
+
+# Workspace runtime (optional heartbeat state)
+workspace/memory/heartbeat-state.json
