@@ -45,7 +45,6 @@
     "channels": "Telegram / Discord / Slack when you add them."
   },
   "secrets": [
-    { "name": "ANTHROPIC_API_KEY", "description": "Anthropic API key for the agent's LLM calls" },
     { "name": "CDP_APP_ID", "description": "Coinbase CDP application ID for x402 payment verification" },
     { "name": "CDP_SECRET", "description": "Base64-encoded Ed25519 private key from Coinbase CDP" },
     { "name": "GATEWAY_API_KEY", "description": "The Graph Gateway API key for subgraph queries" },
