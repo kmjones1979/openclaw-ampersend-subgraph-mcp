@@ -45,11 +45,11 @@
     "channels": "Telegram / Discord / Slack when you add them."
   },
   "secrets": [
-    { "name": "ANTHROPIC_API_KEY" },
-    { "name": "CDP_APP_ID" },
-    { "name": "CDP_SECRET" },
-    { "name": "GATEWAY_API_KEY" },
-    { "name": "PAY_TO_ADDRESS" }
+    { "name": "ANTHROPIC_API_KEY", "description": "Anthropic API key for the agent's LLM calls" },
+    { "name": "CDP_APP_ID", "description": "Coinbase CDP application ID for x402 payment verification" },
+    { "name": "CDP_SECRET", "description": "Base64-encoded Ed25519 private key from Coinbase CDP" },
+    { "name": "GATEWAY_API_KEY", "description": "The Graph Gateway API key for subgraph queries" },
+    { "name": "PAY_TO_ADDRESS", "description": "Wallet address on Base mainnet to receive USDC payments" }
   ],
   "scripts": {
     "build": "bash scripts/build.sh",
