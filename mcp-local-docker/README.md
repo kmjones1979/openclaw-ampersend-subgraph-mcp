@@ -2,7 +2,7 @@
 
 A self-contained stack that serves [The Graph](https://thegraph.com/) subgraph data via the [Model Context Protocol (MCP)](https://github.com/graphops/subgraph-mcp), gated by [x402](https://www.x402.org/) micropayments in USDC on Base mainnet.
 
-**OpenClaw:** agent instructions and the [ampersend](https://www.ampersend.ai/) skill live in the repo’s **`workspace/`** folder; **`manifest.json`** is at the repo root. See the [root README](../README.md).
+**OpenClaw:** agent instructions and the [ampersend](https://www.ampersend.ai/) skill live in the repo's **`workspace/`** folder; **`manifest.json`** is at the repo root. See the [root README](../README.md).
 
 The **`mcp-front`** service depends on **`@ampersend_ai/ampersend-sdk@0.0.16`** (see [ampersend docs](https://docs.ampersend.ai/)); it loads at startup to confirm the SDK is present. Seller-side verify/settle for this stack still uses **Express + `@x402/core` + Coinbase CDP** as implemented in `mcp-front/server.js`.
 
@@ -32,66 +32,42 @@ Client (with USDC wallet)
 | **The Graph Gateway API key** | [thegraph.com/studio](https://thegraph.com/studio) |
 | **Coinbase CDP App ID + Ed25519 secret** | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — create an app, generate an Ed25519 key pair |
 | **A wallet address on Base mainnet** | Where USDC payments are sent |
-| **Docker + Docker Compose** _or_ **Rust + Node.js** | Docker for containerised setup; Rust + Node for native |
+| **Rust + Node.js** | Installed automatically by the setup script |
 
-## Quick start (Docker)
+## Quick start
 
 ```bash
-# Clone the repo
-git clone https://github.com/kmjones1979/openclaw-ampersend-subgraph-mcp.git
-cd openclaw-ampersend-subgraph-mcp
-
-# Run interactive setup (prompts for keys)
-sudo bash setup-mcp-docker.sh
+# One command — builds Rust binary (first run ~10-20 min), installs Node deps, starts both services
+bash scripts/setup-mcp.sh
 ```
 
-The setup script will:
-1. Install Docker/Compose if needed
-2. Prompt for your Gateway key, CDP credentials, and pay-to address
-3. Build and start both containers
-4. Test the endpoints
-
-### Manual Docker setup (non-interactive)
+Secrets are expected as env vars (`GATEWAY_API_KEY`, `PAY_TO_ADDRESS`, `CDP_APP_ID`, `CDP_SECRET`). On Pinata Agents these are injected from the dashboard. For local dev:
 
 ```bash
-# 1. Copy and fill the env template
 cp mcp-local-docker/.env.example mcp-local-docker/.env
-# Edit .env with your values
+# Edit .env with your values, then:
+bash scripts/setup-mcp.sh
+```
 
-# 2. Start the stack
-cd mcp-local-docker
-docker compose up -d --build
+### What the setup does
 
-# 3. Verify
+1. Checks that all 4 required env vars are present
+2. Installs [Rust via rustup](https://rustup.rs/) to `~/.cargo/` (user-level, no root)
+3. Clones [graphops/subgraph-mcp](https://github.com/graphops/subgraph-mcp), runs `cargo build --release`, copies the binary to `~/.local/bin/subgraph-mcp`
+4. Installs `mcp-front/` Node.js dependencies (pnpm preferred, falls back to npm)
+5. Starts `subgraph-mcp` on port 8000 and `mcp-front` (x402 proxy) on port 8080
+
+Steps 2-4 are skipped on subsequent runs if already done.
+
+### Verify
+
+```bash
 curl -s -N http://localhost:8080/sse          # Should return SSE with sessionId
 curl -s -X POST http://localhost:8080/messages \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 # Should return HTTP 402 with payment requirements
 ```
-
-## Quick start (native — no Docker, no root)
-
-For environments where Docker is unavailable (Pinata Agents, CI containers, unprivileged hosts). Requires `git`, `curl`, a C toolchain (`gcc`, `pkg-config`, `libssl-dev`), and Node.js.
-
-```bash
-# 1. Build everything (installs Rust via rustup, compiles subgraph-mcp, installs Node deps)
-bash scripts/build.sh
-
-# 2. Provide secrets — either export env vars or write .env:
-cp mcp-local-docker/.env.example mcp-local-docker/.env
-# Edit .env with your values
-
-# 3. Start both services (subgraph-mcp :8000, mcp-front :8080)
-bash scripts/start.sh
-```
-
-What the build does:
-- Installs [rustup](https://rustup.rs/) to `~/.cargo/` (user-level)
-- Clones [graphops/subgraph-mcp](https://github.com/graphops/subgraph-mcp), runs `cargo build --release`, copies the binary to `~/.local/bin/subgraph-mcp`
-- Installs `mcp-front/` Node.js dependencies via pnpm (preferred) or npm
-
-The start script loads `mcp-local-docker/.env` if present, then runs both processes in the foreground with a trap for clean shutdown.
 
 ## Endpoints
 
@@ -171,14 +147,7 @@ See [`.env.example`](.env.example) for the full list with descriptions.
 
 ## Teardown
 
-Docker:
-
-```bash
-cd mcp-local-docker
-docker compose down
-```
-
-Native (if started via `scripts/start.sh`): send `Ctrl-C` or `kill` the script process — the trap cleans up both children.
+Send `Ctrl-C` to the `setup-mcp.sh` / `start.sh` process — the trap cleans up both child services.
 
 ## Troubleshooting
 

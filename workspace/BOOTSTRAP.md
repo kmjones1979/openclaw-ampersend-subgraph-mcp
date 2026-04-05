@@ -41,8 +41,6 @@ This handles everything: installs Rust (if needed), compiles `subgraph-mcp`, ins
 
 **Secrets are already available as env vars** — Pinata injects them at runtime from the dashboard. Do NOT ask the user for secrets or look for a `.env` file. The script auto-detects them.
 
-If Docker is available instead, the alternative is `sudo bash setup-mcp-docker.sh`.
-
 ## 4) You + human: identity
 
 Have a short conversation and then update:

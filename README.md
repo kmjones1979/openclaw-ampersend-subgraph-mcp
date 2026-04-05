@@ -4,10 +4,10 @@ Pinata-style layout (same as [ampersend-openclaw](https://github.com/kmjones1979
 
 | Piece | Role |
 |--------|------|
-| **`manifest.json`** | Pinata Agents config: `scripts.build` + `scripts.start` for native build/run; secrets for CDP/Graph keys; optional cron task. |
+| **`manifest.json`** | Pinata Agents config: `scripts.build` for lightweight deps; secrets for CDP/Graph keys; optional cron task. |
 | **`workspace/`** | OpenClaw agent files: `AGENTS.md`, `SOUL.md`, `USER.md`, `memory/`, **`skills/ampersend/SKILL.md`**. |
-| **`mcp-local-docker/`** | x402 proxy + Rust subgraph MCP server (The Graph). Details: [mcp-local-docker/README.md](mcp-local-docker/README.md). |
-| **`scripts/`** | `build.sh` (native compile) and `start.sh` (launch without Docker). |
+| **`mcp-local-docker/`** | x402 proxy (`mcp-front/server.js`) + Rust MCP server source ref. Details: [mcp-local-docker/README.md](mcp-local-docker/README.md). |
+| **`scripts/`** | `setup-mcp.sh` (one-command build + start), `build.sh` / `build-mcp.sh` / `start.sh` (individual steps). |
 
 ## Layout
 
@@ -15,14 +15,16 @@ Pinata-style layout (same as [ampersend-openclaw](https://github.com/kmjones1979
 manifest.json          # Pinata Agents config (remove _docs before marketplace)
 README.md
 scripts/
-  build.sh             # Native build: Rust + subgraph-mcp + mcp-front deps
-  start.sh             # Start both services without Docker
+  setup-mcp.sh         # One command: build + start everything
+  build.sh             # Lightweight: ampersend CLI + mcp-front Node deps
+  build-mcp.sh         # Heavy: Rust toolchain + subgraph-mcp binary
+  start.sh             # Start both services
 workspace/
   AGENTS.md SOUL.md USER.md IDENTITY.md TOOLS.md HEARTBEAT.md BOOTSTRAP.md
   memory/
   skills/ampersend/SKILL.md
-mcp-local-docker/      # Subgraph MCP + x402 gateway (see mcp-local-docker/README.md)
-setup-mcp-docker.sh    # Docker-based setup (requires sudo + Docker)
+mcp-local-docker/
+  mcp-front/           # Node.js x402 proxy (server.js + package.json)
 ```
 
 ## OpenClaw
@@ -48,31 +50,17 @@ Details: `workspace/skills/ampersend/SKILL.md`.
 
 ## Subgraph MCP + x402
 
-Self-hosted **MCP** server for **The Graph** subgraphs, gated by **x402** micropayments (USDC on Base via Coinbase CDP).
+Self-hosted **MCP** server for **The Graph** subgraphs, gated by **x402** micropayments (USDC on Base via Coinbase CDP). No Docker required.
 
-### Option A: Docker (requires root/sudo)
-
-```bash
-sudo bash setup-mcp-docker.sh
-```
-
-### Option B: Native (no Docker, no root)
-
-For environments without Docker — e.g. Pinata Agents, CI containers, unprivileged hosts. Requires `git`, `curl`, a C toolchain (`gcc`, `pkg-config`, `libssl-dev`), and Node.js.
+### Setup (one command)
 
 ```bash
-# Build everything (Rust toolchain + subgraph-mcp binary + mcp-front deps)
-bash scripts/build.sh
-
-# Create .env with your secrets (or set them as env vars)
-cp mcp-local-docker/.env.example mcp-local-docker/.env
-# Edit .env with your values
-
-# Start both services
-bash scripts/start.sh
+bash scripts/setup-mcp.sh
 ```
 
-The build script installs Rust via [rustup](https://rustup.rs/) (user-level, no root), clones and compiles [subgraph-mcp](https://github.com/graphops/subgraph-mcp) to `~/.local/bin/`, and installs the Node.js proxy deps.
+This handles everything: installs Rust via [rustup](https://rustup.rs/) (user-level, no root), compiles [subgraph-mcp](https://github.com/graphops/subgraph-mcp) to `~/.local/bin/`, installs Node.js proxy deps, and starts both services. First run takes ~10-20 min (Rust compile); re-runs are fast.
+
+Secrets are expected as env vars (`GATEWAY_API_KEY`, `PAY_TO_ADDRESS`, `CDP_APP_ID`, `CDP_SECRET`). On Pinata Agents these are injected from the dashboard. For local dev, copy and fill `mcp-local-docker/.env.example`.
 
 Full architecture, env vars, and client examples: [mcp-local-docker/README.md](mcp-local-docker/README.md).
 
@@ -81,10 +69,9 @@ Full architecture, env vars, and client examples: [mcp-local-docker/README.md](m
 When imported into Pinata Agents:
 
 1. **Secrets** — set `GATEWAY_API_KEY`, `PAY_TO_ADDRESS`, `CDP_APP_ID`, `CDP_SECRET` in the Pinata dashboard. They're injected as env vars at runtime.
-2. **Build** — `manifest.json` → `scripts.build` runs `scripts/build.sh` after each push (installs Rust + compiles subgraph-mcp + installs Node deps).
-3. **Start** — `scripts.start` runs `scripts/start.sh` on boot (launches both services on ports 8000/8080).
-4. **Routes** — port 8080 is forwarded via `manifest.json` → `routes`.
-5. Remove the **`_docs`** key from `manifest.json` before marketplace submit.
+2. **Build** — `manifest.json` → `scripts.build` runs `scripts/build.sh` after each push (installs ampersend CLI + Node deps).
+3. **MCP setup** — after the agent boots, tell it to run `bash scripts/setup-mcp.sh` (or it will follow `BOOTSTRAP.md` automatically).
+4. Remove the **`_docs`** key from `manifest.json` before marketplace submit.
 
 ## License
 
