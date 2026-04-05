@@ -4,11 +4,12 @@ Skills define _how_ tools work. This file is for _your_ specifics — the stuff 
 
 ## This repository
 
-- **Subgraph MCP + x402:** `../mcp-local-docker/` — proxy port 8080, MCP 8000. Two setup paths:
-  - **Docker:** `sudo bash setup-mcp-docker.sh` (requires root + Docker)
-  - **Native:** `bash scripts/build.sh && bash scripts/start.sh` (no Docker, no root — used by Pinata Agents)
+- **Subgraph MCP + x402:** `../mcp-local-docker/` — proxy port 8080, MCP 8000.
+  - **One command:** `bash scripts/setup-mcp.sh` (builds Rust binary + starts services; no Docker, no root)
+  - **Docker alternative:** `sudo bash setup-mcp-docker.sh`
+  - **Secrets are env vars** — Pinata injects them. Don't ask the user or hunt for `.env`.
 - **ampersend CLI:** global install via `manifest.json` `scripts.build` or `npm install -g @ampersend_ai/ampersend-sdk@0.0.16`. Skill: `skills/ampersend/SKILL.md`.
-- **Native binary location:** `~/.local/bin/subgraph-mcp` (after `scripts/build.sh`)
+- **Native binary location:** `~/.local/bin/subgraph-mcp` (after `scripts/setup-mcp.sh`)
 
 ## What Goes Here
 

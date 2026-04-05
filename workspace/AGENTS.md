@@ -11,7 +11,10 @@ This folder (`workspace/`) is the **OpenClaw agent workspace**. Treat it as home
 
 ## Subgraph MCP stack (repo root)
 
-- Self-hosted **The Graph** subgraph data over **MCP**, gated by **x402** (Coinbase CDP / USDC on Base). Code and setup: **`../mcp-local-docker/`** and root **`README.md`**. Use that path when helping with Docker, env vars, or the Node proxy — not this `workspace/` folder alone.
+- Self-hosted **The Graph** subgraph data over **MCP**, gated by **x402** (Coinbase CDP / USDC on Base).
+- **To set up:** run `bash scripts/setup-mcp.sh` from the repo root. One command — it builds, installs, and starts everything. First run takes ~10-20 min (Rust compile); re-runs are fast.
+- **Secrets are already env vars** — Pinata injects `GATEWAY_API_KEY`, `PAY_TO_ADDRESS`, `CDP_APP_ID`, `CDP_SECRET` at runtime. Do NOT ask the user for these values or look for a `.env` file.
+- Code and details: **`../mcp-local-docker/`** and root **`README.md`**.
 
 ## First run
 

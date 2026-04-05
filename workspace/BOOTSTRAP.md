@@ -29,26 +29,19 @@ This folder is the OpenClaw workspace (`workspace/` inside the git repo). Set **
 
 Ensure the **`ampersend` binary** is on `PATH` for the gateway process (skill metadata requires `bins: ["ampersend"]`).
 
-## 3) Optional: Subgraph MCP stack (repo root)
+## 3) Subgraph MCP + x402 gateway
 
-From the **repository root** (parent of `workspace/`):
-
-**Docker** (requires root/sudo):
+When the user asks to set up the MCP stack, run **one command** from the repo root:
 
 ```bash
-sudo bash setup-mcp-docker.sh
+bash scripts/setup-mcp.sh
 ```
 
-**Native** (no Docker, no root — e.g. Pinata Agents):
+This handles everything: installs Rust (if needed), compiles `subgraph-mcp`, installs Node deps, and starts both services. First run takes ~10-20 min (Rust compile); subsequent runs are fast.
 
-```bash
-bash scripts/build-mcp.sh   # Install Rust + compile subgraph-mcp (~10-20 min)
-bash scripts/start.sh       # launches subgraph-mcp :8000 + mcp-front :8080
-```
+**Secrets are already available as env vars** — Pinata injects them at runtime from the dashboard. Do NOT ask the user for secrets or look for a `.env` file. The script auto-detects them.
 
-Note: `scripts/build.sh` (ampersend CLI + Node deps) runs automatically on deploy. The heavy Rust build (`build-mcp.sh`) runs separately after the agent is online to avoid blocking boot.
-
-Secrets come from env vars (Pinata injects them) or from `mcp-local-docker/.env`. See `../mcp-local-docker/README.md` for full details.
+If Docker is available instead, the alternative is `sudo bash setup-mcp-docker.sh`.
 
 ## 4) You + human: identity
 
