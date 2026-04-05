@@ -42,9 +42,11 @@ sudo bash setup-mcp-docker.sh
 **Native** (no Docker, no root — e.g. Pinata Agents):
 
 ```bash
-bash scripts/build.sh   # Rust toolchain + subgraph-mcp binary + Node deps
-bash scripts/start.sh   # launches subgraph-mcp :8000 + mcp-front :8080
+bash scripts/build-mcp.sh   # Install Rust + compile subgraph-mcp (~10-20 min)
+bash scripts/start.sh       # launches subgraph-mcp :8000 + mcp-front :8080
 ```
+
+Note: `scripts/build.sh` (ampersend CLI + Node deps) runs automatically on deploy. The heavy Rust build (`build-mcp.sh`) runs separately after the agent is online to avoid blocking boot.
 
 Secrets come from env vars (Pinata injects them) or from `mcp-local-docker/.env`. See `../mcp-local-docker/README.md` for full details.
 
