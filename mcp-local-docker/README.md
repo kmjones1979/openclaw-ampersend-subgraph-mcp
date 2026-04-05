@@ -32,9 +32,9 @@ Client (with USDC wallet)
 | **The Graph Gateway API key** | [thegraph.com/studio](https://thegraph.com/studio) |
 | **Coinbase CDP App ID + Ed25519 secret** | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — create an app, generate an Ed25519 key pair |
 | **A wallet address on Base mainnet** | Where USDC payments are sent |
-| **Docker + Docker Compose** | Setup script installs these if missing |
+| **Docker + Docker Compose** _or_ **Rust + Node.js** | Docker for containerised setup; Rust + Node for native |
 
-## Quick start
+## Quick start (Docker)
 
 ```bash
 # Clone the repo
@@ -51,7 +51,7 @@ The setup script will:
 3. Build and start both containers
 4. Test the endpoints
 
-### Manual setup (non-interactive)
+### Manual Docker setup (non-interactive)
 
 ```bash
 # 1. Copy and fill the env template
@@ -69,6 +69,29 @@ curl -s -X POST http://localhost:8080/messages \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 # Should return HTTP 402 with payment requirements
 ```
+
+## Quick start (native — no Docker, no root)
+
+For environments where Docker is unavailable (Pinata Agents, CI containers, unprivileged hosts). Requires `git`, `curl`, a C toolchain (`gcc`, `pkg-config`, `libssl-dev`), and Node.js.
+
+```bash
+# 1. Build everything (installs Rust via rustup, compiles subgraph-mcp, installs Node deps)
+bash scripts/build.sh
+
+# 2. Provide secrets — either export env vars or write .env:
+cp mcp-local-docker/.env.example mcp-local-docker/.env
+# Edit .env with your values
+
+# 3. Start both services (subgraph-mcp :8000, mcp-front :8080)
+bash scripts/start.sh
+```
+
+What the build does:
+- Installs [rustup](https://rustup.rs/) to `~/.cargo/` (user-level)
+- Clones [graphops/subgraph-mcp](https://github.com/graphops/subgraph-mcp), runs `cargo build --release`, copies the binary to `~/.local/bin/subgraph-mcp`
+- Installs `mcp-front/` Node.js dependencies via pnpm (preferred) or npm
+
+The start script loads `mcp-local-docker/.env` if present, then runs both processes in the foreground with a trap for clean shutdown.
 
 ## Endpoints
 
@@ -148,10 +171,14 @@ See [`.env.example`](.env.example) for the full list with descriptions.
 
 ## Teardown
 
+Docker:
+
 ```bash
 cd mcp-local-docker
 docker compose down
 ```
+
+Native (if started via `scripts/start.sh`): send `Ctrl-C` or `kill` the script process — the trap cleans up both children.
 
 ## Troubleshooting
 

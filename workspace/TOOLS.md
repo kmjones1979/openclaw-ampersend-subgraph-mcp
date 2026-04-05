@@ -4,8 +4,11 @@ Skills define _how_ tools work. This file is for _your_ specifics — the stuff 
 
 ## This repository
 
-- **Subgraph MCP + x402 (Docker):** `../mcp-local-docker/` — proxy port 8080, MCP 8000 after `docker compose up`. See `../README.md` and `../mcp-local-docker/README.md`.
+- **Subgraph MCP + x402:** `../mcp-local-docker/` — proxy port 8080, MCP 8000. Two setup paths:
+  - **Docker:** `sudo bash setup-mcp-docker.sh` (requires root + Docker)
+  - **Native:** `bash scripts/build.sh && bash scripts/start.sh` (no Docker, no root — used by Pinata Agents)
 - **ampersend CLI:** global install via `manifest.json` `scripts.build` or `npm install -g @ampersend_ai/ampersend-sdk@0.0.16`. Skill: `skills/ampersend/SKILL.md`.
+- **Native binary location:** `~/.local/bin/subgraph-mcp` (after `scripts/build.sh`)
 
 ## What Goes Here
 

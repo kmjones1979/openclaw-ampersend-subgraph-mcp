@@ -44,10 +44,20 @@
     "routes": "Port forwards; pair with scripts.start; bind servers to 0.0.0.0.",
     "channels": "Telegram / Discord / Slack when you add them."
   },
-  "secrets": [],
+  "secrets": [
+    { "name": "ANTHROPIC_API_KEY" },
+    { "name": "CDP_APP_ID" },
+    { "name": "CDP_SECRET" },
+    { "name": "GATEWAY_API_KEY" },
+    { "name": "PAY_TO_ADDRESS" }
+  ],
   "scripts": {
-    "build": "npm install -g @ampersend_ai/ampersend-sdk@0.0.16"
+    "build": "bash scripts/build.sh",
+    "start": "bash scripts/start.sh"
   },
+  "routes": [
+    { "port": 8080, "path": "/" }
+  ],
   "tasks": [
     {
       "name": "ampersend-daily-status",

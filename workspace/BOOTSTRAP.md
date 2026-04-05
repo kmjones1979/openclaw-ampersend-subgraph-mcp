@@ -1,6 +1,6 @@
 # BOOTSTRAP.md — First run
 
-You are booting a workspace for **ampersend** (x402 agent payments) and a repo that contains the **Subgraph MCP + x402** Docker stack.
+You are booting a workspace for **ampersend** (x402 agent payments) and a repo that contains the **Subgraph MCP + x402** stack.
 
 ## 1) Human: ampersend CLI (gateway machine)
 
@@ -33,11 +33,20 @@ Ensure the **`ampersend` binary** is on `PATH` for the gateway process (skill me
 
 From the **repository root** (parent of `workspace/`):
 
+**Docker** (requires root/sudo):
+
 ```bash
 sudo bash setup-mcp-docker.sh
 ```
 
-Or follow `../mcp-local-docker/README.md` for manual Docker setup. This is separate from OpenClaw’s workspace files.
+**Native** (no Docker, no root — e.g. Pinata Agents):
+
+```bash
+bash scripts/build.sh   # Rust toolchain + subgraph-mcp binary + Node deps
+bash scripts/start.sh   # launches subgraph-mcp :8000 + mcp-front :8080
+```
+
+Secrets come from env vars (Pinata injects them) or from `mcp-local-docker/.env`. See `../mcp-local-docker/README.md` for full details.
 
 ## 4) You + human: identity
 
