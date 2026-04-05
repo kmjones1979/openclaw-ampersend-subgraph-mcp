@@ -11,7 +11,15 @@ const {
   x402HTTPResourceServer,
   HTTPFacilitatorClient,
 } = require('@x402/core/server');
-const { getUsdcAddressForChain } = require('x402/shared/evm');
+const USDC_ADDRESSES = {
+  8453:  '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base mainnet
+  84532: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia
+};
+function getUsdcAddressForChain(chainId) {
+  const addr = USDC_ADDRESSES[chainId];
+  if (!addr) throw new Error(`No USDC address for chain ${chainId}`);
+  return addr;
+}
 
 const app = express();
 app.use(express.json());
