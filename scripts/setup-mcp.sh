@@ -55,8 +55,8 @@ else
   BUILD_DIR=$(mktemp -d)
   echo "Cloning graphops/subgraph-mcp..."
   git clone --depth 1 https://github.com/graphops/subgraph-mcp.git "$BUILD_DIR"
-  echo "Compiling (release)..."
-  (cd "$BUILD_DIR" && cargo build --release)
+  echo "Compiling (release, --jobs 1 to avoid OOM on constrained containers)..."
+  (cd "$BUILD_DIR" && cargo build --release --jobs 1)
   mkdir -p "$HOME/.local/bin"
   cp "$BUILD_DIR/target/release/subgraph-mcp" "$SUBGRAPH_BIN"
   chmod +x "$SUBGRAPH_BIN"

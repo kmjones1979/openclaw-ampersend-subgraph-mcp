@@ -27,7 +27,9 @@ else
   echo "Cloning and compiling subgraph-mcp (this takes a while)..."
   BUILD_DIR=$(mktemp -d)
   git clone --depth 1 https://github.com/graphops/subgraph-mcp.git "$BUILD_DIR"
-  (cd "$BUILD_DIR" && cargo build --release)
+  # --jobs 1: compile one crate at a time to stay under memory limits on
+  # constrained containers (Pinata Agents, CI). Slower but won't OOM.
+  (cd "$BUILD_DIR" && cargo build --release --jobs 1)
   mkdir -p "$HOME/.local/bin"
   cp "$BUILD_DIR/target/release/subgraph-mcp" "$SUBGRAPH_BIN"
   chmod +x "$SUBGRAPH_BIN"
