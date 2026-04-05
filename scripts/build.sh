@@ -21,6 +21,10 @@ if [ -f "$ROOT_DIR/mcp-local-docker/mcp-front/package.json" ]; then
   else
     npm install
   fi
+  # Symlink the global ampersend-sdk into mcp-front so ESM import() finds it
+  # without adding the heavy wagmi/walletconnect tree to the local install.
+  echo "Linking ampersend-sdk from global install..."
+  npm link @ampersend_ai/ampersend-sdk 2>/dev/null || echo "  (link skipped — SDK not globally installed yet)"
 fi
 
 echo "=== Build complete ==="

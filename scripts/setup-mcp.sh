@@ -81,6 +81,13 @@ else
   echo "mcp-front: node_modules present"
 fi
 
+# Symlink global ampersend-sdk into mcp-front (ESM import needs it local).
+if [ ! -d "$FRONT_DIR/node_modules/@ampersend_ai/ampersend-sdk" ]; then
+  echo "Linking ampersend-sdk from global install..."
+  cd "$FRONT_DIR"
+  npm link @ampersend_ai/ampersend-sdk 2>/dev/null || echo "  (link skipped — SDK not globally installed yet)"
+fi
+
 # ========================
 # Phase 3: Start services
 # ========================

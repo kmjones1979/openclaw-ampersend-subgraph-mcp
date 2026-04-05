@@ -268,9 +268,17 @@ app.get('/favicon.png', (req, res) => res.sendFile(path.join(__dirname, 'favicon
 
 // x402 discovery endpoint
 app.get('/.well-known/x402', (req, res) => {
+  const sdk = getAmpersendSdk();
   res.json({
     version: 1,
     resources: ['POST /messages', 'POST /query'],
+    ampersend: {
+      available: !!sdk,
+      factories: sdk
+        ? ['createAmpersendHttpClient', 'createAmpersendMcpClient', 'createAmpersendProxy', 'wrapWithAmpersend']
+            .filter((name) => typeof sdk[name] === 'function')
+        : [],
+    },
   });
 });
 
@@ -394,21 +402,31 @@ app.post('/query', x402Middleware, async (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 
-/** Ensure @ampersend_ai/ampersend-sdk resolves and core factories exist (SDK is ESM-only). */
-async function verifyAmpersendSdk() {
+// ampersend SDK (ESM-only, loaded via dynamic import from global install + npm link).
+// Provides buyer-side x402 payment factories for agent-governed spend.
+let ampersendSdk = null;
+
+async function loadAmpersendSdk() {
   const sdk = await import('@ampersend_ai/ampersend-sdk');
   const required = [
     'createAmpersendHttpClient',
     'createAmpersendTreasurer',
     'createAmpersendProxy',
     'createAmpersendMcpClient',
+    'wrapWithAmpersend',
   ];
   const missing = required.filter((name) => typeof sdk[name] !== 'function');
   if (missing.length) {
-    console.warn('@ampersend_ai/ampersend-sdk: unexpected exports (missing):', missing.join(', '));
+    console.warn('@ampersend_ai/ampersend-sdk: loaded but missing exports:', missing.join(', '));
   } else {
-    console.log('@ampersend_ai/ampersend-sdk: OK (x402/MCP factories available)');
+    console.log('@ampersend_ai/ampersend-sdk: OK — all factories available');
   }
+  ampersendSdk = sdk;
+  return sdk;
+}
+
+function getAmpersendSdk() {
+  return ampersendSdk;
 }
 
 function startListening(paymentGatingLabel) {
@@ -419,14 +437,14 @@ function startListening(paymentGatingLabel) {
 
 initX402()
   .then(() =>
-    verifyAmpersendSdk().catch((e) =>
+    loadAmpersendSdk().catch((e) =>
       console.warn('@ampersend_ai/ampersend-sdk:', e.message),
     ),
   )
   .then(() => startListening(''))
   .catch((err) => {
     console.error('x402 init failed, starting without payment gating:', err.message);
-    verifyAmpersendSdk()
+    loadAmpersendSdk()
       .catch((e) => console.warn('@ampersend_ai/ampersend-sdk:', e.message))
       .finally(() => startListening(' (NO payment gating)'));
   });
