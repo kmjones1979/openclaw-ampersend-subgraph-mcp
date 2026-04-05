@@ -7,6 +7,6 @@ set -euo pipefail
 echo "=== Build ==="
 
 echo "Installing ampersend CLI..."
-npm install -g @ampersend_ai/ampersend-sdk@0.0.16
+npm install -g --force @ampersend_ai/ampersend-sdk@0.0.16
 
 echo "=== Build complete ==="
