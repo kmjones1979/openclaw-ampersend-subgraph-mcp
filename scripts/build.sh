@@ -7,6 +7,8 @@ set -euo pipefail
 echo "=== Build ==="
 
 echo "Installing ampersend CLI..."
-npm install -g --force @ampersend_ai/ampersend-sdk@0.0.16
+NPM_GLOBAL="${NPM_CONFIG_PREFIX:-$(npm config get prefix)}/lib/node_modules/@ampersend_ai"
+rm -rf "$NPM_GLOBAL/.ampersend-sdk-"* 2>/dev/null || true
+npm install -g @ampersend_ai/ampersend-sdk@0.0.16
 
 echo "=== Build complete ==="
